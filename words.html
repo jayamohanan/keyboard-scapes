@@ -106,32 +106,27 @@
         .letter-box {
             width: 50px;
             height: 50px;
-            background: white;
-            border: 3px solid #ddd;
-            border-radius: 8px;
+            border: none;
+            border-radius: 4px;
             display: flex;
             justify-content: center;
             align-items: center;
             font-size: 1.8em;
             font-weight: bold;
-            color: #333;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            color: white;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
             transition: all 0.3s ease;
         }
 
         .letter-box.correct {
             background: linear-gradient(145deg, #48bb78, #38a169);
             color: white;
-            border-color: #38a169;
             animation: correct-pulse 0.5s ease;
         }
 
         .letter-box.highlighted {
-            background: linear-gradient(145deg, #667eea, #764ba2);
-            color: white;
-            border-color: #667eea;
-            transform: scale(1.1);
-            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+            transform: scale(1.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
 
         /* Ghost letter animation */
@@ -234,11 +229,15 @@
         let gameWords = [];
         let swapPairs = [];
         let correctSwaps = 0;
+        let currentLevelColor = '';
 
         function initGame() {
             currentLayout = cloneLayout(CORRECT_LAYOUT);
             selectedKeys = [];
             correctSwaps = 0;
+            
+            // Set color for this level
+            currentLevelColor = getLevelColor();
             
             // Determine number of words based on level
             let wordCount = Math.min(1 + Math.floor(level / 2), 4);
@@ -254,8 +253,17 @@
             gameWords = [];
             swapPairs = [];
             
-            // Get random words
-            const words = getRandomWords(count, level > 5 ? 'medium' : 'easy');
+            // Determine word length based on level (3-6 letters)
+            let letterCount = 3 + Math.min(Math.floor((level - 1) / 3), 3); // Increases every 3 levels
+            
+            // Get random words of specific length
+            const words = getRandomWords(count, letterCount);
+            
+            // If not enough words, try mixed lengths
+            if (words.length < count) {
+                const mixedWords = getRandomMixedWords(count);
+                words.push(...mixedWords.slice(0, count - words.length));
+            }
             
             words.forEach(word => {
                 // Select two different letters to swap from this word
@@ -332,9 +340,28 @@
             });
         }
 
+        // Wordscapes-style colors for letter boxes
+        const letterBoxColors = [
+            '#ff6600', // Bright Orange
+            '#2ac700', // Light Green
+            '#06aaff', // Blue
+            '#f5a106', // Golden Orange
+            '#8b22de', // Violet
+            '#ff01f0', // Purple
+            '#fa1e14'  // Red
+        ];
+
+        function getLevelColor() {
+            // Cycle through colors based on level
+            return letterBoxColors[(level - 1) % letterBoxColors.length];
+        }
+
         function renderWords() {
             const container = document.getElementById('wordsContainer');
             container.innerHTML = '';
+            
+            // Get the color for this level
+            const levelColor = currentLevelColor;
 
             gameWords.forEach((wordObj, wordIndex) => {
                 if (!wordObj.completed) {
@@ -347,6 +374,10 @@
                         letterBox.className = 'letter-box';
                         letterBox.textContent = letter;
                         letterBox.dataset.letter = letter.toLowerCase();
+                        
+                        // Use same color for all boxes in this level
+                        letterBox.style.backgroundColor = levelColor;
+                        
                         wordRow.appendChild(letterBox);
                     });
 
@@ -590,8 +621,15 @@
             window.location.href = 'index.html';
         }
 
+        // Load words from CSV and start the game
+        async function startGame() {
+            updateMessage("Loading words...");
+            await loadWordsFromCSV();
+            initGame();
+        }
+
         // Start the game
-        initGame();
+        startGame();
     </script>
 </body>
 </html>

@@ -7,12 +7,64 @@ const CORRECT_LAYOUT = [
     ['Z', 'X', 'C', 'V', 'B', 'N', 'M']
 ];
 
-// Common word lists for different difficulty levels
-const WORD_LISTS = {
-    easy: ['LOVE', 'HOPE', 'TIME', 'LIFE', 'HOME', 'WORK', 'PLAY', 'JUMP', 'FAST', 'BEST'],
-    medium: ['HOUSE', 'WORLD', 'PLACE', 'THINK', 'PHONE', 'WATER', 'MUSIC', 'LIGHT', 'FIRST', 'HEART'],
-    hard: ['TYPING', 'PLAYER', 'RECORD', 'BUTTON', 'SCREEN', 'PEOPLE', 'MOMENT', 'WINTER', 'SPRING', 'SUMMER']
+// Word lists loaded from CSV
+let WORD_LISTS = {
+    3: [],
+    4: [],
+    5: [],
+    6: []
 };
+
+// Flag to check if words are loaded
+let wordsLoaded = false;
+
+// Load words from CSV file
+async function loadWordsFromCSV() {
+    if (wordsLoaded) return;
+    
+    try {
+        const response = await fetch('data/words.csv');
+        const csvText = await response.text();
+        const lines = csvText.split('\n');
+        
+        // Skip header line
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+            
+            const [word, letterCount] = line.split(',');
+            if (!word || !letterCount) continue;
+            
+            const count = parseInt(letterCount);
+            const cleanWord = word.trim().toUpperCase();
+            
+            // Only include words with 3-6 letters and only alphabetic characters
+            if (count >= 3 && count <= 6 && /^[A-Z]+$/.test(cleanWord)) {
+                if (WORD_LISTS[count]) {
+                    WORD_LISTS[count].push(cleanWord);
+                }
+            }
+        }
+        
+        wordsLoaded = true;
+        console.log('Words loaded:', {
+            '3-letter': WORD_LISTS[3].length,
+            '4-letter': WORD_LISTS[4].length,
+            '5-letter': WORD_LISTS[5].length,
+            '6-letter': WORD_LISTS[6].length
+        });
+    } catch (error) {
+        console.error('Error loading words:', error);
+        // Fallback word lists
+        WORD_LISTS = {
+            3: ['THE', 'AND', 'FOR', 'ARE', 'BUT', 'NOT', 'YOU', 'ALL', 'CAN', 'HER'],
+            4: ['THAT', 'WITH', 'HAVE', 'THIS', 'WILL', 'YOUR', 'FROM', 'THEY', 'KNOW', 'WANT'],
+            5: ['WOULD', 'THERE', 'THEIR', 'WHAT', 'ABOUT', 'WHICH', 'THINK', 'COULD', 'PEOPLE', 'FIRST'],
+            6: ['SHOULD', 'BEFORE', 'PEOPLE', 'REALLY', 'LITTLE', 'THINGS', 'BECAUSE', 'CHANGE', 'PERSON', 'SCHOOL']
+        };
+        wordsLoaded = true;
+    }
+}
 
 // Get a flat array of all letters
 function getAllLetters() {
@@ -42,20 +94,47 @@ function isLayoutCorrect(currentLayout) {
     return true;
 }
 
-// Get random word from word list
-function getRandomWord(difficulty = 'medium') {
-    const words = WORD_LISTS[difficulty];
+// Get random word from word list by letter count
+function getRandomWord(letterCount = 4) {
+    if (!WORD_LISTS[letterCount] || WORD_LISTS[letterCount].length === 0) {
+        return null;
+    }
+    const words = WORD_LISTS[letterCount];
     return words[Math.floor(Math.random() * words.length)];
 }
 
 // Get multiple unique random words
-function getRandomWords(count, difficulty = 'medium') {
-    const words = [...WORD_LISTS[difficulty]];
+function getRandomWords(count, letterCount = 4) {
+    if (!WORD_LISTS[letterCount] || WORD_LISTS[letterCount].length === 0) {
+        return [];
+    }
+    
+    const words = [...WORD_LISTS[letterCount]];
     const selected = [];
+    
     for (let i = 0; i < count && words.length > 0; i++) {
         const index = Math.floor(Math.random() * words.length);
         selected.push(words.splice(index, 1)[0]);
     }
+    
+    return selected;
+}
+
+// Get random words with mixed lengths (3-6 letters)
+function getRandomMixedWords(count) {
+    const selected = [];
+    const availableLengths = [3, 4, 5, 6];
+    
+    for (let i = 0; i < count; i++) {
+        // Pick a random length
+        const length = availableLengths[Math.floor(Math.random() * availableLengths.length)];
+        const word = getRandomWord(length);
+        
+        if (word) {
+            selected.push(word);
+        }
+    }
+    
     return selected;
 }
 
