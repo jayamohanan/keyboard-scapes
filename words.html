@@ -86,6 +86,27 @@
             gap: 40px;
         }
 
+        /* Misplaced keys indicator - subtle, plain text */
+        .misplaced-indicator {
+            font-size: 0.9em;
+            font-weight: normal;
+            color: #666;
+            text-align: center;
+            transition: color 0.3s ease;
+        }
+
+        .misplaced-indicator.success {
+            color: #28a745;
+        }
+
+        /* Keyboard section wrapper */
+        .keyboard-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
         .words-container {
             display: flex;
             flex-direction: column;
@@ -95,7 +116,7 @@
 
         .word-row {
             display: flex;
-            gap: 5px;
+            gap: 2.5px;
             transition: all 0.5s ease;
         }
 
@@ -217,7 +238,13 @@
         <!-- Game content -->
         <div class="game-content">
             <div id="wordsContainer" class="words-container"></div>
-            <div id="keyboard" class="keyboard"></div>
+            
+            <div class="keyboard-section">
+                <div class="misplaced-indicator" id="misplacedIndicator">
+                    Calculating misplaced keys...
+                </div>
+                <div id="keyboard" class="keyboard"></div>
+            </div>
         </div>
     </div>
 
@@ -246,7 +273,40 @@
             applySwapsToKeyboard();
             renderWords();
             renderKeyboard();
+            updateMisplacedKeysCount();
             updateMessage("Select two keys to swap");
+        }
+
+        // Count how many keys are misplaced in the current layout
+        function countMisplacedKeys() {
+            let misplacedCount = 0;
+            
+            for (let row = 0; row < currentLayout.length; row++) {
+                for (let col = 0; col < currentLayout[row].length; col++) {
+                    if (currentLayout[row][col] !== CORRECT_LAYOUT[row][col]) {
+                        misplacedCount++;
+                    }
+                }
+            }
+            
+            return misplacedCount;
+        }
+
+        // Update the misplaced keys indicator
+        function updateMisplacedKeysCount() {
+            const count = countMisplacedKeys();
+            const indicator = document.getElementById('misplacedIndicator');
+            
+            if (count === 0) {
+                indicator.textContent = 'All keys are in correct position! 🎉';
+                indicator.className = 'misplaced-indicator success';
+            } else if (count === 1) {
+                indicator.textContent = '1 key is misplaced';
+                indicator.className = 'misplaced-indicator';
+            } else {
+                indicator.textContent = `${count} keys are misplaced`;
+                indicator.className = 'misplaced-indicator';
+            }
         }
 
         function setupGameWords(count) {
@@ -493,6 +553,7 @@
             updateAllWords();
             setTimeout(() => {
                 renderWords();
+                updateMisplacedKeysCount();
                 checkWords();
             }, 600);
         }
