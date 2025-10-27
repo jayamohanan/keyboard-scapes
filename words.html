@@ -126,6 +126,34 @@
             animation: correct-pulse 0.5s ease;
         }
 
+        .letter-box.highlighted {
+            background: linear-gradient(145deg, #667eea, #764ba2);
+            color: white;
+            border-color: #667eea;
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Ghost letter animation */
+        .ghost-letter {
+            position: fixed;
+            pointer-events: none;
+            z-index: 1000;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.8;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
         @keyframes fadeOut {
             from { opacity: 1; transform: scale(1); }
             to { opacity: 0; transform: scale(0.8); }
@@ -314,10 +342,11 @@
                     wordRow.className = 'word-row';
                     wordRow.dataset.wordIndex = wordIndex;
 
-                    wordObj.current.split('').forEach(letter => {
+                    wordObj.current.split('').forEach((letter, letterIndex) => {
                         const letterBox = document.createElement('div');
                         letterBox.className = 'letter-box';
                         letterBox.textContent = letter;
+                        letterBox.dataset.letter = letter.toLowerCase();
                         wordRow.appendChild(letterBox);
                     });
 
@@ -350,15 +379,20 @@
 
         function selectKey(row, col) {
             const keyElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            const letter = currentLayout[row][col].toLowerCase();
             
             const existingIndex = selectedKeys.findIndex(k => k.row === row && k.col === col);
             
             if (existingIndex !== -1) {
+                // Deselect
                 selectedKeys.splice(existingIndex, 1);
                 keyElement.classList.remove('selected');
+                unhighlightLetterInWords(letter);
             } else if (selectedKeys.length < 2) {
-                selectedKeys.push({ row, col, element: keyElement });
+                // Select
+                selectedKeys.push({ row, col, element: keyElement, letter: letter });
                 keyElement.classList.add('selected');
+                highlightLetterInWords(letter);
                 
                 if (selectedKeys.length === 2) {
                     setTimeout(() => swapKeys(), 300);
@@ -369,6 +403,22 @@
                          selectedKeys.length === 1 ? "Select one more key" : "Swapping...");
         }
 
+        function highlightLetterInWords(letter) {
+            const letterBoxes = document.querySelectorAll(`.letter-box[data-letter="${letter}"]`);
+            letterBoxes.forEach(box => {
+                if (!box.classList.contains('correct')) {
+                    box.classList.add('highlighted');
+                }
+            });
+        }
+
+        function unhighlightLetterInWords(letter) {
+            const letterBoxes = document.querySelectorAll(`.letter-box[data-letter="${letter}"]`);
+            letterBoxes.forEach(box => {
+                box.classList.remove('highlighted');
+            });
+        }
+
         function swapKeys() {
             const key1 = selectedKeys[0];
             const key2 = selectedKeys[1];
@@ -376,22 +426,31 @@
             const letter1 = currentLayout[key1.row][key1.col];
             const letter2 = currentLayout[key2.row][key2.col];
 
+            // Remove highlights from words
+            unhighlightLetterInWords(key1.letter);
+            unhighlightLetterInWords(key2.letter);
+
+            // Create ghost letters for animation
+            createGhostLetterAnimation(key1.element, key2.element, letter1, letter2);
+
             // Swap in the layout
             currentLayout[key1.row][key1.col] = letter2;
             currentLayout[key2.row][key2.col] = letter1;
 
-            // Update UI
-            key1.element.textContent = letter2;
-            key2.element.textContent = letter1;
-
-            // Add swap animation
-            key1.element.classList.add('swapped');
-            key2.element.classList.add('swapped');
-
+            // Update UI after animation delay
             setTimeout(() => {
-                key1.element.classList.remove('swapped');
-                key2.element.classList.remove('swapped');
-            }, 500);
+                key1.element.textContent = letter2;
+                key2.element.textContent = letter1;
+
+                // Add swap animation
+                key1.element.classList.add('swapped');
+                key2.element.classList.add('swapped');
+
+                setTimeout(() => {
+                    key1.element.classList.remove('swapped');
+                    key2.element.classList.remove('swapped');
+                }, 500);
+            }, 150);
 
             // Clear selection
             key1.element.classList.remove('selected');
@@ -401,9 +460,51 @@
             // Update swap pairs
             updateSwapPairs(letter1, letter2);
             updateAllWords();
-            renderWords();
+            setTimeout(() => {
+                renderWords();
+                checkWords();
+            }, 600);
+        }
 
-            setTimeout(() => checkWords(), 600);
+        function createGhostLetterAnimation(fromElement, toElement, letter1, letter2) {
+            const rect1 = fromElement.getBoundingClientRect();
+            const rect2 = toElement.getBoundingClientRect();
+
+            // Create ghost for letter1 moving to position 2
+            const ghost1 = document.createElement('div');
+            ghost1.className = 'ghost-letter';
+            ghost1.textContent = letter1;
+            ghost1.style.left = rect1.left + 'px';
+            ghost1.style.top = rect1.top + 'px';
+            document.body.appendChild(ghost1);
+
+            // Create ghost for letter2 moving to position 1
+            const ghost2 = document.createElement('div');
+            ghost2.className = 'ghost-letter';
+            ghost2.textContent = letter2;
+            ghost2.style.left = rect2.left + 'px';
+            ghost2.style.top = rect2.top + 'px';
+            document.body.appendChild(ghost2);
+
+            // Animate ghosts
+            requestAnimationFrame(() => {
+                ghost1.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+                ghost2.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+                
+                ghost1.style.left = rect2.left + 'px';
+                ghost1.style.top = rect2.top + 'px';
+                ghost1.style.opacity = '0';
+                
+                ghost2.style.left = rect1.left + 'px';
+                ghost2.style.top = rect1.top + 'px';
+                ghost2.style.opacity = '0';
+            });
+
+            // Remove ghosts after animation
+            setTimeout(() => {
+                ghost1.remove();
+                ghost2.remove();
+            }, 500);
         }
 
         function updateSwapPairs(letter1, letter2) {
