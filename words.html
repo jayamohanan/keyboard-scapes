@@ -6,8 +6,87 @@
     <title>Words Mode - Keyboard</title>
     <link rel="stylesheet" href="common.css">
     <style>
+        /* Override common styles */
+        body {
+            padding: 0;
+            align-items: flex-start;
+        }
+
+        .game-container {
+            padding: 0;
+            border-radius: 0;
+            max-width: 100%;
+            width: 100%;
+            min-height: 100vh;
+            box-shadow: none;
+        }
+
+        /* Top bar with back arrow and level */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: linear-gradient(145deg, #667eea, #764ba2);
+            padding: 15px 20px;
+            color: white;
+        }
+
+        .back-btn {
+            position: absolute;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(-3px);
+        }
+
+        .top-bar .level {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: white;
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
+        }
+
+        /* Info panel - only message visible */
+        .info-panel {
+            background: #f5f5f5;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .message {
+            font-size: 1.2em;
+            color: #333;
+            font-weight: 500;
+        }
+
+        /* Game content area */
+        .game-content {
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px;
+        }
+
         .words-container {
-            margin-bottom: 40px;
             display: flex;
             flex-direction: column;
             gap: 15px;
@@ -47,25 +126,14 @@
             animation: correct-pulse 0.5s ease;
         }
 
-        .progress-bar {
-            width: 100%;
-            background: #f5f5f5;
-            border-radius: 10px;
-            padding: 5px;
-            margin-bottom: 20px;
+        @keyframes fadeOut {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.8); }
         }
 
-        .progress-fill {
-            height: 20px;
-            background: linear-gradient(145deg, #667eea, #764ba2);
-            border-radius: 7px;
-            transition: width 0.5s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 0.8em;
-            font-weight: bold;
+        @keyframes correct-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
         }
 
         @media (max-width: 768px) {
@@ -73,6 +141,11 @@
                 width: 40px;
                 height: 40px;
                 font-size: 1.4em;
+            }
+
+            .game-content {
+                padding: 30px 15px;
+                gap: 30px;
             }
         }
 
@@ -82,30 +155,46 @@
                 height: 32px;
                 font-size: 1.1em;
             }
+
+            .back-btn {
+                width: 35px;
+                height: 35px;
+                font-size: 1.2em;
+                left: 15px;
+            }
+
+            .top-bar .level {
+                font-size: 1.1em;
+            }
+
+            .message {
+                font-size: 1em;
+            }
+
+            .game-content {
+                padding: 20px 10px;
+                gap: 25px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="game-container">
-        <h1>📝 Words Mode</h1>
-        <p class="subtitle">Fix the keyboard to reveal the words!</p>
-        
-        <div class="info-bar">
-            <div class="level">Level: <span id="levelNumber">1</span></div>
+        <!-- Top bar with back arrow and level -->
+        <div class="top-bar">
+            <button class="back-btn" onclick="goHome()">←</button>
+            <div class="level">Level <span id="levelNumber">1</span></div>
+        </div>
+
+        <!-- Message panel -->
+        <div class="info-panel">
             <div class="message" id="message">Select two keys to swap</div>
         </div>
 
-        <div class="progress-bar">
-            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
-        </div>
-
-        <div id="wordsContainer" class="words-container"></div>
-
-        <div id="keyboard" class="keyboard"></div>
-
-        <div class="buttons">
-            <button class="home-btn" onclick="goHome()">🏠 Home</button>
-            <button class="reset-btn" onclick="resetCurrentLevel()">🔄 Reset</button>
+        <!-- Game content -->
+        <div class="game-content">
+            <div id="wordsContainer" class="words-container"></div>
+            <div id="keyboard" class="keyboard"></div>
         </div>
     </div>
 
@@ -130,7 +219,6 @@
             applySwapsToKeyboard();
             renderWords();
             renderKeyboard();
-            updateProgress();
             updateMessage("Select two keys to swap");
         }
 
@@ -361,8 +449,6 @@
                 }
             });
 
-            updateProgress();
-
             if (allCorrect) {
                 setTimeout(() => {
                     updateMessage("All words revealed! Perfect! 🎉");
@@ -376,16 +462,6 @@
             } else {
                 updateMessage("Select two keys to swap");
             }
-        }
-
-        function updateProgress() {
-            const total = gameWords.length;
-            const completed = gameWords.filter(w => w.completed).length;
-            const percentage = (completed / total) * 100;
-            
-            const progressFill = document.getElementById('progressFill');
-            progressFill.style.width = percentage + '%';
-            progressFill.textContent = completed > 0 ? `${completed}/${total}` : '';
         }
 
         function highlightAllKeys() {
