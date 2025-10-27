@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blind Type - Keyboard</title>
+    <link rel="stylesheet" href="common.css">
+    <style>
+        .target-word-container {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .target-word-label {
+            color: #666;
+            font-size: 1em;
+            margin-bottom: 10px;
+        }
+
+        .target-word {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+            letter-spacing: 5px;
+            margin-bottom: 20px;
+        }
+
+        .typed-word-container {
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .typed-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .typed-word {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+            letter-spacing: 3px;
+            min-height: 40px;
+        }
+
+        .typed-word.correct {
+            color: #48bb78;
+        }
+
+        .typed-word.incorrect {
+            color: #fc8181;
+        }
+
+        .key.visible {
+            background: linear-gradient(145deg, #667eea, #764ba2);
+            color: white;
+            border-color: #667eea;
+        }
+
+        .key.clicked {
+            animation: click-pulse 0.3s ease;
+        }
+
+        @keyframes click-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(0.9); }
+        }
+
+        .submit-btn {
+            background: linear-gradient(145deg, #667eea, #764ba2);
+            color: white;
+            display: none;
+        }
+
+        .submit-btn.show {
+            display: inline-block;
+        }
+
+        .submit-btn:hover {
+            background: linear-gradient(145deg, #5568d3, #653a8b);
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .target-word {
+                font-size: 2em;
+            }
+
+            .typed-word {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>👁️ Blind Type</h1>
+        <p class="subtitle">Type the word with limited key labels!</p>
+        
+        <div class="info-bar">
+            <div class="level">Level: <span id="levelNumber">1</span></div>
+            <div class="message" id="message">Click keys to type the word</div>
+        </div>
+
+        <div class="target-word-container">
+            <div class="target-word-label">Type this word:</div>
+            <div class="target-word" id="targetWord"></div>
+        </div>
+
+        <div class="typed-word-container">
+            <div class="typed-label">Your typing:</div>
+            <div class="typed-word" id="typedWord"></div>
+        </div>
+
+        <div id="keyboard" class="keyboard"></div>
+
+        <div class="buttons">
+            <button class="home-btn" onclick="goHome()">🏠 Home</button>
+            <button class="reset-btn" onclick="resetCurrentLevel()">🔄 Reset</button>
+            <button class="submit-btn" id="submitBtn" onclick="checkWord()">✓ Submit</button>
+        </div>
+    </div>
+
+    <script src="utils.js"></script>
+    <script>
+        let currentLayout = [];
+        let visibleKeys = [];
+        let targetWord = '';
+        let typedWord = '';
+        let level = 1;
+
+        function initGame() {
+            currentLayout = cloneLayout(CORRECT_LAYOUT);
+            selectVisibleKeys();
+            targetWord = getRandomWord('easy');
+            if (level > 3) targetWord = getRandomWord('medium');
+            if (level > 6) targetWord = getRandomWord('hard');
+            
+            typedWord = '';
+            document.getElementById('targetWord').textContent = targetWord;
+            document.getElementById('typedWord').textContent = '';
+            document.getElementById('submitBtn').classList.remove('show');
+            
+            renderKeyboard();
+            updateMessage("Click keys to type the word");
+        }
+
+        function selectVisibleKeys() {
+            visibleKeys = [];
+            
+            // Select 2 keys from each row
+            for (let row = 0; row < CORRECT_LAYOUT.length; row++) {
+                const rowKeys = [...CORRECT_LAYOUT[row]];
+                const selected = getRandomItems(rowKeys, 2);
+                visibleKeys.push(...selected);
+            }
+        }
+
+        function renderKeyboard() {
+            const keyboardDiv = document.getElementById('keyboard');
+            keyboardDiv.innerHTML = '';
+
+            currentLayout.forEach((row, rowIndex) => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'keyboard-row';
+
+                row.forEach((letter, colIndex) => {
+                    const keyDiv = document.createElement('div');
+                    keyDiv.className = 'key';
+                    
+                    if (visibleKeys.includes(letter)) {
+                        keyDiv.classList.add('visible');
+                        keyDiv.textContent = letter;
+                    } else {
+                        keyDiv.classList.add('hidden');
+                        keyDiv.textContent = '•';
+                    }
+                    
+                    keyDiv.dataset.row = rowIndex;
+                    keyDiv.dataset.col = colIndex;
+                    keyDiv.dataset.letter = letter;
+                    keyDiv.onclick = () => typeKey(letter, keyDiv);
+                    rowDiv.appendChild(keyDiv);
+                });
+
+                keyboardDiv.appendChild(rowDiv);
+            });
+        }
+
+        function typeKey(letter, keyElement) {
+            if (typedWord.length >= targetWord.length) return;
+
+            typedWord += letter;
+            document.getElementById('typedWord').textContent = typedWord;
+
+            // Animate key press
+            keyElement.classList.add('clicked');
+            setTimeout(() => keyElement.classList.remove('clicked'), 300);
+
+            if (typedWord.length === targetWord.length) {
+                document.getElementById('submitBtn').classList.add('show');
+                updateMessage("Click Submit to check your answer!");
+            } else {
+                updateMessage(`Type ${targetWord.length - typedWord.length} more letter${targetWord.length - typedWord.length > 1 ? 's' : ''}`);
+            }
+        }
+
+        function checkWord() {
+            const typedElement = document.getElementById('typedWord');
+            
+            // Reveal all keys
+            document.querySelectorAll('.key.hidden').forEach(key => {
+                key.classList.remove('hidden');
+                key.textContent = key.dataset.letter;
+            });
+
+            if (typedWord === targetWord) {
+                typedElement.classList.add('correct');
+                updateMessage("Perfect typing! 🎉");
+                
+                // Highlight correct keys
+                for (let i = 0; i < targetWord.length; i++) {
+                    const letter = targetWord[i];
+                    const pos = findLetterPosition(letter);
+                    if (pos) {
+                        const keyElement = document.querySelector(`[data-row="${pos.row}"][data-col="${pos.col}"]`);
+                        setTimeout(() => {
+                            keyElement.classList.add('correct');
+                        }, i * 100);
+                    }
+                }
+                
+                setTimeout(() => {
+                    showWinOverlay(nextLevel, goHome);
+                }, 1500);
+            } else {
+                typedElement.classList.add('incorrect');
+                updateMessage("Not quite right. Try again!");
+                
+                // Highlight incorrect keys
+                for (let i = 0; i < typedWord.length; i++) {
+                    const letter = typedWord[i];
+                    const pos = findLetterPosition(letter);
+                    if (pos) {
+                        const keyElement = document.querySelector(`[data-row="${pos.row}"][data-col="${pos.col}"]`);
+                        if (typedWord[i] !== targetWord[i]) {
+                            setTimeout(() => {
+                                keyElement.classList.add('incorrect');
+                            }, i * 100);
+                        }
+                    }
+                }
+                
+                setTimeout(() => {
+                    showFailOverlay(`You typed "${typedWord}" but the word was "${targetWord}"`, resetCurrentLevel, goHome);
+                }, 1500);
+            }
+        }
+
+        function resetCurrentLevel() {
+            typedWord = '';
+            document.getElementById('typedWord').textContent = '';
+            document.getElementById('typedWord').classList.remove('correct', 'incorrect');
+            document.getElementById('submitBtn').classList.remove('show');
+            
+            // Clear all key states
+            document.querySelectorAll('.key').forEach(key => {
+                key.classList.remove('correct', 'incorrect');
+            });
+            
+            renderKeyboard();
+            updateMessage("Click keys to type the word");
+        }
+
+        function nextLevel() {
+            level++;
+            updateLevel(level);
+            initGame();
+        }
+
+        function goHome() {
+            window.location.href = 'index.html';
+        }
+
+        // Start the game
+        initGame();
+    </script>
+</body>
+</html>

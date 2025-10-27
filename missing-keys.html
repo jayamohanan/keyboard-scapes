@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Missing Keys - Keyboard</title>
+    <link rel="stylesheet" href="common.css">
+    <style>
+        .game-container {
+            max-width: 900px;
+        }
+
+        .keyboard {
+            margin-bottom: 40px;
+        }
+
+        .missing-keys-container {
+            background: #f5f5f5;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .missing-keys-title {
+            text-align: center;
+            color: #666;
+            font-size: 1em;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .missing-keys {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .missing-key {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(145deg, #ffffff, #e6e6e6);
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .missing-key:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            border-color: #667eea;
+        }
+
+        .missing-key.used {
+            opacity: 0.3;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .missing-key.placing {
+            animation: placing 0.5s ease;
+        }
+
+        @keyframes placing {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.8); }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        @media (max-width: 768px) {
+            .key, .missing-key {
+                width: 45px;
+                height: 45px;
+                font-size: 1.2em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .key, .missing-key {
+                width: 35px;
+                height: 35px;
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🔍 Missing Keys</h1>
+        <p class="subtitle">Place the missing keys in their correct positions!</p>
+        
+        <div class="info-bar">
+            <div class="level">Level: <span id="levelNumber">1</span></div>
+            <div class="message" id="message">Click a key below to place it</div>
+        </div>
+
+        <div id="keyboard" class="keyboard"></div>
+
+        <div class="missing-keys-container">
+            <div class="missing-keys-title">Missing Keys ↓</div>
+            <div id="missingKeys" class="missing-keys"></div>
+        </div>
+
+        <div class="buttons">
+            <button class="home-btn" onclick="goHome()">🏠 Home</button>
+            <button class="reset-btn" onclick="resetCurrentLevel()">🔄 Reset</button>
+        </div>
+    </div>
+
+    <script src="utils.js"></script>
+    <script>
+        let currentLayout = [];
+        let missingPositions = [];
+        let missingLetters = [];
+        let currentHighlightIndex = 0;
+        let level = 1;
+        let placedKeys = 0;
+
+        function initGame() {
+            currentLayout = cloneLayout(CORRECT_LAYOUT);
+            selectMissingKeys();
+            renderKeyboard();
+            renderMissingKeys();
+            highlightNextMissing();
+            placedKeys = 0;
+            updateMessage("Click a key below to place it");
+        }
+
+        function selectMissingKeys() {
+            missingPositions = [];
+            missingLetters = [];
+            
+            // Get all positions
+            const allPositions = [];
+            for (let row = 0; row < CORRECT_LAYOUT.length; row++) {
+                for (let col = 0; col < CORRECT_LAYOUT[row].length; col++) {
+                    allPositions.push({ row, col, letter: CORRECT_LAYOUT[row][col] });
+                }
+            }
+
+            // Randomly select 4 positions
+            const selected = getRandomItems(allPositions, 4);
+            
+            selected.forEach(pos => {
+                missingPositions.push({ row: pos.row, col: pos.col });
+                missingLetters.push(pos.letter);
+                currentLayout[pos.row][pos.col] = null; // Mark as missing
+            });
+
+            // Shuffle missing letters for display
+            missingLetters = shuffleArray(missingLetters);
+            currentHighlightIndex = 0;
+        }
+
+        function renderKeyboard() {
+            const keyboardDiv = document.getElementById('keyboard');
+            keyboardDiv.innerHTML = '';
+
+            currentLayout.forEach((row, rowIndex) => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'keyboard-row';
+
+                row.forEach((letter, colIndex) => {
+                    const keyDiv = document.createElement('div');
+                    if (letter === null) {
+                        keyDiv.className = 'key missing';
+                        keyDiv.textContent = '?';
+                    } else {
+                        keyDiv.className = 'key';
+                        keyDiv.textContent = letter;
+                    }
+                    keyDiv.dataset.row = rowIndex;
+                    keyDiv.dataset.col = colIndex;
+                    rowDiv.appendChild(keyDiv);
+                });
+
+                keyboardDiv.appendChild(rowDiv);
+            });
+        }
+
+        function renderMissingKeys() {
+            const missingKeysDiv = document.getElementById('missingKeys');
+            missingKeysDiv.innerHTML = '';
+
+            missingLetters.forEach((letter, index) => {
+                const keyDiv = document.createElement('div');
+                keyDiv.className = 'missing-key';
+                keyDiv.textContent = letter;
+                keyDiv.dataset.index = index;
+                keyDiv.onclick = () => placeKey(index, letter);
+                missingKeysDiv.appendChild(keyDiv);
+            });
+        }
+
+        function highlightNextMissing() {
+            // Remove all highlights
+            document.querySelectorAll('.key').forEach(k => k.classList.remove('highlighted'));
+            
+            if (currentHighlightIndex < missingPositions.length) {
+                const pos = missingPositions[currentHighlightIndex];
+                const keyElement = document.querySelector(`[data-row="${pos.row}"][data-col="${pos.col}"]`);
+                if (keyElement) {
+                    keyElement.classList.add('highlighted');
+                }
+            }
+        }
+
+        function placeKey(index, letter) {
+            if (currentHighlightIndex >= missingPositions.length) return;
+
+            const pos = missingPositions[currentHighlightIndex];
+            const correctLetter = CORRECT_LAYOUT[pos.row][pos.col];
+
+            // Mark missing key as used with animation
+            const missingKeyElement = document.querySelector(`.missing-key[data-index="${index}"]`);
+            missingKeyElement.classList.add('placing');
+
+            setTimeout(() => {
+                missingKeyElement.classList.remove('placing');
+                missingKeyElement.classList.add('used');
+                
+                // Place the letter in keyboard
+                currentLayout[pos.row][pos.col] = letter;
+                const keyElement = document.querySelector(`[data-row="${pos.row}"][data-col="${pos.col}"]`);
+                keyElement.textContent = letter;
+                keyElement.classList.remove('missing', 'highlighted');
+
+                // Check if correct
+                if (letter === correctLetter) {
+                    keyElement.classList.add('correct');
+                    placedKeys++;
+                    currentHighlightIndex++;
+                    
+                    if (placedKeys === 4) {
+                        // All keys placed correctly
+                        setTimeout(() => {
+                            updateMessage("Perfect! All keys placed correctly! 🎉");
+                            showWinOverlay(nextLevel, goHome);
+                        }, 500);
+                    } else {
+                        updateMessage(`Great! ${4 - placedKeys} more to go!`);
+                        highlightNextMissing();
+                    }
+                } else {
+                    // Wrong placement
+                    keyElement.classList.add('incorrect');
+                    setTimeout(() => {
+                        updateMessage("Wrong placement! Try again.");
+                        showFailOverlay("That key doesn't belong there!", resetCurrentLevel, goHome);
+                    }, 500);
+                }
+            }, 300);
+        }
+
+        function resetCurrentLevel() {
+            // Reset all elements
+            document.querySelectorAll('.missing-key').forEach(k => {
+                k.classList.remove('used', 'placing');
+            });
+            currentHighlightIndex = 0;
+            initGame();
+        }
+
+        function nextLevel() {
+            level++;
+            updateLevel(level);
+            initGame();
+        }
+
+        function goHome() {
+            window.location.href = 'index.html';
+        }
+
+        // Start the game
+        initGame();
+    </script>
+</body>
+</html>

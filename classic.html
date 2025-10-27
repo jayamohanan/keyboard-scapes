@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classic Mode - Keyboard</title>
+    <link rel="stylesheet" href="common.css">
+</head>
+<body>
+    <div class="game-container">
+        <h1>🎯 Classic Mode</h1>
+        <p class="subtitle">Find the two swapped keys and fix the keyboard!</p>
+        
+        <div class="info-bar">
+            <div class="level">Level: <span id="levelNumber">1</span></div>
+            <div class="message" id="message">Select two keys to swap</div>
+        </div>
+
+        <div id="keyboard" class="keyboard"></div>
+
+        <div class="buttons">
+            <button class="home-btn" onclick="goHome()">🏠 Home</button>
+            <button class="reset-btn" onclick="resetCurrentLevel()">🔄 Reset</button>
+        </div>
+    </div>
+
+    <script src="utils.js"></script>
+    <script>
+        let currentLayout = [];
+        let selectedKeys = [];
+        let level = 1;
+
+        function initGame() {
+            currentLayout = cloneLayout(CORRECT_LAYOUT);
+            swapRandomKeys();
+            renderKeyboard();
+            updateMessage("Select two keys to swap");
+        }
+
+        function swapRandomKeys() {
+            // Get all positions
+            const positions = [];
+            for (let row = 0; row < currentLayout.length; row++) {
+                for (let col = 0; col < currentLayout[row].length; col++) {
+                    positions.push({ row, col });
+                }
+            }
+
+            // Randomly select two different positions
+            const pos1 = positions[Math.floor(Math.random() * positions.length)];
+            let pos2;
+            do {
+                pos2 = positions[Math.floor(Math.random() * positions.length)];
+            } while (pos1.row === pos2.row && pos1.col === pos2.col);
+
+            // Swap the keys
+            const temp = currentLayout[pos1.row][pos1.col];
+            currentLayout[pos1.row][pos1.col] = currentLayout[pos2.row][pos2.col];
+            currentLayout[pos2.row][pos2.col] = temp;
+        }
+
+        function renderKeyboard() {
+            const keyboardDiv = document.getElementById('keyboard');
+            keyboardDiv.innerHTML = '';
+
+            currentLayout.forEach((row, rowIndex) => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'keyboard-row';
+
+                row.forEach((letter, colIndex) => {
+                    const keyDiv = document.createElement('div');
+                    keyDiv.className = 'key';
+                    keyDiv.textContent = letter;
+                    keyDiv.dataset.row = rowIndex;
+                    keyDiv.dataset.col = colIndex;
+                    keyDiv.onclick = () => selectKey(rowIndex, colIndex);
+                    rowDiv.appendChild(keyDiv);
+                });
+
+                keyboardDiv.appendChild(rowDiv);
+            });
+        }
+
+        function selectKey(row, col) {
+            const keyElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            
+            // Check if already selected
+            const existingIndex = selectedKeys.findIndex(k => k.row === row && k.col === col);
+            
+            if (existingIndex !== -1) {
+                // Deselect
+                selectedKeys.splice(existingIndex, 1);
+                keyElement.classList.remove('selected');
+            } else if (selectedKeys.length < 2) {
+                // Select
+                selectedKeys.push({ row, col, element: keyElement });
+                keyElement.classList.add('selected');
+                
+                if (selectedKeys.length === 2) {
+                    setTimeout(() => swapKeys(), 300);
+                }
+            }
+
+            updateMessage(selectedKeys.length === 0 ? "Select two keys to swap" : 
+                         selectedKeys.length === 1 ? "Select one more key" : "Swapping...");
+        }
+
+        function swapKeys() {
+            const key1 = selectedKeys[0];
+            const key2 = selectedKeys[1];
+
+            // Swap in the layout
+            const temp = currentLayout[key1.row][key1.col];
+            currentLayout[key1.row][key1.col] = currentLayout[key2.row][key2.col];
+            currentLayout[key2.row][key2.col] = temp;
+
+            // Update UI
+            key1.element.textContent = currentLayout[key1.row][key1.col];
+            key2.element.textContent = currentLayout[key2.row][key2.col];
+
+            // Add swap animation
+            key1.element.classList.add('swapped');
+            key2.element.classList.add('swapped');
+
+            setTimeout(() => {
+                key1.element.classList.remove('swapped');
+                key2.element.classList.remove('swapped');
+            }, 500);
+
+            // Clear selection
+            key1.element.classList.remove('selected');
+            key2.element.classList.remove('selected');
+            selectedKeys = [];
+
+            // Check if correct
+            setTimeout(() => checkWin(), 600);
+        }
+
+        function checkWin() {
+            if (isLayoutCorrect(currentLayout)) {
+                updateMessage("Perfect! Keyboard fixed! 🎉");
+                highlightAllKeys();
+                setTimeout(() => {
+                    showWinOverlay(nextLevel, goHome);
+                }, 1000);
+            } else {
+                updateMessage("Select two keys to swap");
+            }
+        }
+
+        function highlightAllKeys() {
+            const allKeys = document.querySelectorAll('.key');
+            allKeys.forEach((key, index) => {
+                setTimeout(() => {
+                    key.classList.add('correct');
+                }, index * 30);
+            });
+        }
+
+        function resetCurrentLevel() {
+            selectedKeys.forEach(key => key.element.classList.remove('selected'));
+            selectedKeys = [];
+            initGame();
+        }
+
+        function nextLevel() {
+            level++;
+            updateLevel(level);
+            initGame();
+        }
+
+        function goHome() {
+            window.location.href = 'index.html';
+        }
+
+        // Start the game
+        initGame();
+    </script>
+</body>
+</html>

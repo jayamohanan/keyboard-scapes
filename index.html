@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keyboard - Game Modes</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .menu-container {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 3.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 50px;
+            font-size: 1.3em;
+        }
+
+        .mode-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .mode-btn {
+            padding: 25px 40px;
+            font-size: 1.3em;
+            font-weight: bold;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: white;
+        }
+
+        .mode-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .mode-btn .icon {
+            font-size: 1.5em;
+        }
+
+        .mode-btn .description {
+            font-size: 0.6em;
+            font-weight: normal;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        .mode-content {
+            flex: 1;
+            text-align: left;
+        }
+
+        .mode-1 {
+            background: linear-gradient(145deg, #667eea, #764ba2);
+        }
+
+        .mode-1:hover {
+            background: linear-gradient(145deg, #5568d3, #653a8b);
+        }
+
+        .mode-2 {
+            background: linear-gradient(145deg, #f093fb, #f5576c);
+        }
+
+        .mode-2:hover {
+            background: linear-gradient(145deg, #df7fe9, #e04659);
+        }
+
+        .mode-3 {
+            background: linear-gradient(145deg, #4facfe, #00f2fe);
+        }
+
+        .mode-3:hover {
+            background: linear-gradient(145deg, #3a96e5, #00d9e5);
+        }
+
+        .mode-4 {
+            background: linear-gradient(145deg, #43e97b, #38f9d7);
+        }
+
+        .mode-4:hover {
+            background: linear-gradient(145deg, #30d666, #20e0c0);
+        }
+
+        @media (max-width: 768px) {
+            .menu-container {
+                padding: 30px;
+            }
+
+            h1 {
+                font-size: 2.5em;
+            }
+
+            .mode-btn {
+                padding: 20px 30px;
+                font-size: 1.1em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            .mode-btn {
+                padding: 18px 25px;
+                font-size: 1em;
+            }
+
+            .mode-btn .icon {
+                font-size: 1.2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="menu-container">
+        <h1>⌨️ Keyboard</h1>
+        <p class="subtitle">Test your keyboard awareness!</p>
+        
+        <div class="mode-buttons">
+            <a href="missing-keys.html" class="mode-btn mode-1">
+                <div class="mode-content">
+                    <div>Missing Keys</div>
+                    <div class="description">Place the missing keys in correct positions</div>
+                </div>
+                <span class="icon">🔍</span>
+            </a>
+
+            <a href="blind-type.html" class="mode-btn mode-2">
+                <div class="mode-content">
+                    <div>Blind Type</div>
+                    <div class="description">Type words with limited key labels</div>
+                </div>
+                <span class="icon">👁️</span>
+            </a>
+
+            <a href="words.html" class="mode-btn mode-3">
+                <div class="mode-content">
+                    <div>Words</div>
+                    <div class="description">Fix the keyboard to reveal the words</div>
+                </div>
+                <span class="icon">📝</span>
+            </a>
+
+            <a href="classic.html" class="mode-btn mode-4">
+                <div class="mode-content">
+                    <div>Classic</div>
+                    <div class="description">Find and swap two misplaced keys</div>
+                </div>
+                <span class="icon">🎯</span>
+            </a>
+        </div>
+    </div>
+</body>
+</html>

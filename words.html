@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Words Mode - Keyboard</title>
+    <link rel="stylesheet" href="common.css">
+    <style>
+        .words-container {
+            margin-bottom: 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .word-row {
+            display: flex;
+            gap: 5px;
+            transition: all 0.5s ease;
+        }
+
+        .word-row.completed {
+            animation: fadeOut 0.5s ease forwards;
+        }
+
+        .letter-box {
+            width: 50px;
+            height: 50px;
+            background: white;
+            border: 3px solid #ddd;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .letter-box.correct {
+            background: linear-gradient(145deg, #48bb78, #38a169);
+            color: white;
+            border-color: #38a169;
+            animation: correct-pulse 0.5s ease;
+        }
+
+        .progress-bar {
+            width: 100%;
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 5px;
+            margin-bottom: 20px;
+        }
+
+        .progress-fill {
+            height: 20px;
+            background: linear-gradient(145deg, #667eea, #764ba2);
+            border-radius: 7px;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .letter-box {
+                width: 40px;
+                height: 40px;
+                font-size: 1.4em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .letter-box {
+                width: 32px;
+                height: 32px;
+                font-size: 1.1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>📝 Words Mode</h1>
+        <p class="subtitle">Fix the keyboard to reveal the words!</p>
+        
+        <div class="info-bar">
+            <div class="level">Level: <span id="levelNumber">1</span></div>
+            <div class="message" id="message">Select two keys to swap</div>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+
+        <div id="wordsContainer" class="words-container"></div>
+
+        <div id="keyboard" class="keyboard"></div>
+
+        <div class="buttons">
+            <button class="home-btn" onclick="goHome()">🏠 Home</button>
+            <button class="reset-btn" onclick="resetCurrentLevel()">🔄 Reset</button>
+        </div>
+    </div>
+
+    <script src="utils.js"></script>
+    <script>
+        let currentLayout = [];
+        let selectedKeys = [];
+        let level = 1;
+        let gameWords = [];
+        let swapPairs = [];
+        let correctSwaps = 0;
+
+        function initGame() {
+            currentLayout = cloneLayout(CORRECT_LAYOUT);
+            selectedKeys = [];
+            correctSwaps = 0;
+            
+            // Determine number of words based on level
+            let wordCount = Math.min(1 + Math.floor(level / 2), 4);
+            
+            setupGameWords(wordCount);
+            applySwapsToKeyboard();
+            renderWords();
+            renderKeyboard();
+            updateProgress();
+            updateMessage("Select two keys to swap");
+        }
+
+        function setupGameWords(count) {
+            gameWords = [];
+            swapPairs = [];
+            
+            // Get random words
+            const words = getRandomWords(count, level > 5 ? 'medium' : 'easy');
+            
+            words.forEach(word => {
+                // Select two different letters to swap from this word
+                const letters = word.split('');
+                const uniqueLetters = [...new Set(letters)].filter(l => letters.filter(x => x === l).length === 1);
+                
+                if (uniqueLetters.length >= 2) {
+                    const shuffled = shuffleArray(uniqueLetters);
+                    const letter1 = shuffled[0];
+                    const letter2 = shuffled[1];
+                    
+                    gameWords.push({
+                        original: word,
+                        current: word,
+                        swapPair: [letter1, letter2],
+                        completed: false
+                    });
+                    
+                    // Check if this swap pair already exists
+                    const existingPair = swapPairs.find(p => 
+                        (p[0] === letter1 && p[1] === letter2) || 
+                        (p[0] === letter2 && p[1] === letter1)
+                    );
+                    
+                    if (!existingPair) {
+                        swapPairs.push([letter1, letter2]);
+                    }
+                } else {
+                    // Fallback: just add word without swapping
+                    gameWords.push({
+                        original: word,
+                        current: word,
+                        swapPair: null,
+                        completed: false
+                    });
+                }
+            });
+        }
+
+        function applySwapsToKeyboard() {
+            // Apply all swap pairs to the keyboard
+            swapPairs.forEach(pair => {
+                const pos1 = findLetterPosition(pair[0]);
+                const pos2 = findLetterPosition(pair[1]);
+                
+                if (pos1 && pos2) {
+                    // Swap in current layout
+                    const temp = currentLayout[pos1.row][pos1.col];
+                    currentLayout[pos1.row][pos1.col] = currentLayout[pos2.row][pos2.col];
+                    currentLayout[pos2.row][pos2.col] = temp;
+                }
+            });
+            
+            // Apply swaps to words
+            updateAllWords();
+        }
+
+        function updateAllWords() {
+            gameWords.forEach(wordObj => {
+                if (!wordObj.completed && wordObj.swapPair) {
+                    let current = wordObj.original;
+                    
+                    // Apply all active swaps that affect this word
+                    swapPairs.forEach(pair => {
+                        current = current.split('').map(letter => {
+                            if (letter === pair[0]) return pair[1];
+                            if (letter === pair[1]) return pair[0];
+                            return letter;
+                        }).join('');
+                    });
+                    
+                    wordObj.current = current;
+                }
+            });
+        }
+
+        function renderWords() {
+            const container = document.getElementById('wordsContainer');
+            container.innerHTML = '';
+
+            gameWords.forEach((wordObj, wordIndex) => {
+                if (!wordObj.completed) {
+                    const wordRow = document.createElement('div');
+                    wordRow.className = 'word-row';
+                    wordRow.dataset.wordIndex = wordIndex;
+
+                    wordObj.current.split('').forEach(letter => {
+                        const letterBox = document.createElement('div');
+                        letterBox.className = 'letter-box';
+                        letterBox.textContent = letter;
+                        wordRow.appendChild(letterBox);
+                    });
+
+                    container.appendChild(wordRow);
+                }
+            });
+        }
+
+        function renderKeyboard() {
+            const keyboardDiv = document.getElementById('keyboard');
+            keyboardDiv.innerHTML = '';
+
+            currentLayout.forEach((row, rowIndex) => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'keyboard-row';
+
+                row.forEach((letter, colIndex) => {
+                    const keyDiv = document.createElement('div');
+                    keyDiv.className = 'key';
+                    keyDiv.textContent = letter;
+                    keyDiv.dataset.row = rowIndex;
+                    keyDiv.dataset.col = colIndex;
+                    keyDiv.onclick = () => selectKey(rowIndex, colIndex);
+                    rowDiv.appendChild(keyDiv);
+                });
+
+                keyboardDiv.appendChild(rowDiv);
+            });
+        }
+
+        function selectKey(row, col) {
+            const keyElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            
+            const existingIndex = selectedKeys.findIndex(k => k.row === row && k.col === col);
+            
+            if (existingIndex !== -1) {
+                selectedKeys.splice(existingIndex, 1);
+                keyElement.classList.remove('selected');
+            } else if (selectedKeys.length < 2) {
+                selectedKeys.push({ row, col, element: keyElement });
+                keyElement.classList.add('selected');
+                
+                if (selectedKeys.length === 2) {
+                    setTimeout(() => swapKeys(), 300);
+                }
+            }
+
+            updateMessage(selectedKeys.length === 0 ? "Select two keys to swap" : 
+                         selectedKeys.length === 1 ? "Select one more key" : "Swapping...");
+        }
+
+        function swapKeys() {
+            const key1 = selectedKeys[0];
+            const key2 = selectedKeys[1];
+
+            const letter1 = currentLayout[key1.row][key1.col];
+            const letter2 = currentLayout[key2.row][key2.col];
+
+            // Swap in the layout
+            currentLayout[key1.row][key1.col] = letter2;
+            currentLayout[key2.row][key2.col] = letter1;
+
+            // Update UI
+            key1.element.textContent = letter2;
+            key2.element.textContent = letter1;
+
+            // Add swap animation
+            key1.element.classList.add('swapped');
+            key2.element.classList.add('swapped');
+
+            setTimeout(() => {
+                key1.element.classList.remove('swapped');
+                key2.element.classList.remove('swapped');
+            }, 500);
+
+            // Clear selection
+            key1.element.classList.remove('selected');
+            key2.element.classList.remove('selected');
+            selectedKeys = [];
+
+            // Update swap pairs
+            updateSwapPairs(letter1, letter2);
+            updateAllWords();
+            renderWords();
+
+            setTimeout(() => checkWords(), 600);
+        }
+
+        function updateSwapPairs(letter1, letter2) {
+            // Check if this swap fixes a pair
+            const pairIndex = swapPairs.findIndex(p => 
+                (p[0] === letter1 && p[1] === letter2) || 
+                (p[0] === letter2 && p[1] === letter1)
+            );
+            
+            if (pairIndex !== -1) {
+                swapPairs.splice(pairIndex, 1);
+            }
+        }
+
+        function checkWords() {
+            let allCorrect = true;
+            let newlyCompleted = false;
+
+            gameWords.forEach((wordObj, index) => {
+                if (!wordObj.completed && wordObj.current === wordObj.original) {
+                    wordObj.completed = true;
+                    newlyCompleted = true;
+                    correctSwaps++;
+                    
+                    // Animate word completion
+                    const wordRow = document.querySelector(`[data-word-index="${index}"]`);
+                    if (wordRow) {
+                        wordRow.querySelectorAll('.letter-box').forEach((box, i) => {
+                            setTimeout(() => {
+                                box.classList.add('correct');
+                            }, i * 100);
+                        });
+                        
+                        setTimeout(() => {
+                            wordRow.classList.add('completed');
+                            setTimeout(() => renderWords(), 500);
+                        }, wordObj.original.length * 100 + 300);
+                    }
+                }
+                
+                if (!wordObj.completed) {
+                    allCorrect = false;
+                }
+            });
+
+            updateProgress();
+
+            if (allCorrect) {
+                setTimeout(() => {
+                    updateMessage("All words revealed! Perfect! 🎉");
+                    highlightAllKeys();
+                    setTimeout(() => {
+                        showWinOverlay(nextLevel, goHome);
+                    }, 1000);
+                }, 1000);
+            } else if (newlyCompleted) {
+                updateMessage(`Great! ${gameWords.filter(w => !w.completed).length} word${gameWords.filter(w => !w.completed).length > 1 ? 's' : ''} left!`);
+            } else {
+                updateMessage("Select two keys to swap");
+            }
+        }
+
+        function updateProgress() {
+            const total = gameWords.length;
+            const completed = gameWords.filter(w => w.completed).length;
+            const percentage = (completed / total) * 100;
+            
+            const progressFill = document.getElementById('progressFill');
+            progressFill.style.width = percentage + '%';
+            progressFill.textContent = completed > 0 ? `${completed}/${total}` : '';
+        }
+
+        function highlightAllKeys() {
+            const allKeys = document.querySelectorAll('.key');
+            allKeys.forEach((key, index) => {
+                setTimeout(() => {
+                    key.classList.add('correct');
+                }, index * 30);
+            });
+        }
+
+        function resetCurrentLevel() {
+            selectedKeys.forEach(key => key.element.classList.remove('selected'));
+            selectedKeys = [];
+            initGame();
+        }
+
+        function nextLevel() {
+            level++;
+            updateLevel(level);
+            initGame();
+        }
+
+        function goHome() {
+            window.location.href = 'index.html';
+        }
+
+        // Start the game
+        initGame();
+    </script>
+</body>
+</html>
